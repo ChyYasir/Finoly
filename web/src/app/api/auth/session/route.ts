@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as jose from "jose";
 import { db } from "@/db";
-import { user as userSchema } from "@/db/schema";
+import {
+  user as userSchema,
+  business as businessSchema,
+  team as teamSchema,
+  teamMember as teamMemberSchema,
+  role as roleSchema,
+} from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -10,33 +16,119 @@ export async function GET(request: NextRequest) {
   const sessionToken = request.cookies.get("session_token")?.value;
 
   if (!sessionToken || !JWT_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        message: "No valid session found",
+        code: "NO_SESSION",
+      },
+      { status: 401 }
+    );
   }
 
   try {
+    // Verify JWT token
     const { payload } = await jose.jwtVerify(
       sessionToken,
       new TextEncoder().encode(JWT_SECRET)
     );
 
-    const userId = payload.userId as string;
-    const user = await db
+    const userId = payload.id as string;
+    const accountType = payload.accountType as string;
+    const businessId = payload.businessId as string | undefined;
+
+    // Fetch fresh user data from database
+    const userData = await db
       .select({
         id: userSchema.id,
         name: userSchema.name,
         email: userSchema.email,
+        accountType: userSchema.accountType,
+        businessId: userSchema.businessId,
+        businessName: businessSchema.name,
+        businessOwnerId: businessSchema.ownerId,
         createdAt: userSchema.createdAt,
       })
       .from(userSchema)
+      .leftJoin(businessSchema, eq(userSchema.businessId, businessSchema.id))
       .where(eq(userSchema.id, userId));
 
-    if (user.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (userData.length === 0) {
+      return NextResponse.json(
+        {
+          error: "User not found",
+          message: "User account no longer exists",
+          code: "USER_NOT_FOUND",
+        },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ data: user[0] });
+    const user = userData[0];
+
+    // Base response
+    const responseData: any = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      accountType: user.accountType,
+      createdAt: user.createdAt,
+    };
+
+    // Add business context for business users
+    if (user.accountType === "business" && user.businessId) {
+      responseData.businessId = user.businessId;
+      responseData.businessName = user.businessName;
+      responseData.role = user.businessOwnerId === user.id ? "owner" : "member";
+
+      // Fetch current team memberships with roles
+      const teamMemberships = await db
+        .select({
+          teamId: teamMemberSchema.teamId,
+          teamName: teamSchema.name,
+          roleId: teamMemberSchema.roleId,
+          roleName: roleSchema.name,
+          permissions: roleSchema.permissions,
+        })
+        .from(teamMemberSchema)
+        .leftJoin(teamSchema, eq(teamMemberSchema.teamId, teamSchema.id))
+        .leftJoin(roleSchema, eq(teamMemberSchema.roleId, roleSchema.id))
+        .where(eq(teamMemberSchema.userId, user.id));
+
+      responseData.teams = teamMemberships.map((tm) => ({
+        id: tm.teamId,
+        name: tm.teamName,
+        roleId: tm.roleId,
+        roleName: tm.roleName,
+        permissions: tm.permissions ? JSON.parse(tm.permissions) : [],
+      }));
+    }
+
+    return NextResponse.json({
+      status: "success",
+      data: responseData,
+    });
   } catch (error) {
-    console.error("Session fetch error:", error);
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    console.error("Session verification error:", error);
+
+    if (error instanceof jose.errors.JWTExpired) {
+      return NextResponse.json(
+        {
+          error: "Session expired",
+          message: "Your session has expired. Please sign in again",
+          code: "SESSION_EXPIRED",
+        },
+        { status: 401 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: "Unauthorized",
+        message: "Invalid session token",
+        code: "INVALID_SESSION",
+      },
+      { status: 401 }
+    );
   }
 }

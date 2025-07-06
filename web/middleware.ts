@@ -21,17 +21,38 @@ export async function middleware(request: NextRequest) {
         sessionToken,
         new TextEncoder().encode(JWT_SECRET)
       );
-      session = payload;
+
+      // Validate required fields
+      if (payload.id && payload.email && payload.accountType) {
+        session = {
+          id: payload.id,
+          email: payload.email,
+          accountType: payload.accountType,
+          businessId: payload.businessId || null,
+          teams: payload.teams || [],
+        };
+      }
     } catch (error) {
       console.error("JWT verification failed:", error);
+
+      // Clear invalid token
+      if (error instanceof jose.errors.JWTExpired) {
+        const response = NextResponse.redirect(new URL("/signin", request.url));
+        response.cookies.delete("session_token");
+        return response;
+      }
+
       // If token is invalid, treat as no session
+      session = null;
     }
   }
 
+  // Redirect to signin if trying to access protected routes without session
   if (isProtectedRoute && !session) {
     return NextResponse.redirect(new URL("/signin", request.url));
   }
 
+  // Redirect to dashboard if trying to access auth routes with valid session
   if (isAuthRoute && session) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
