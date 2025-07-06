@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as jose from "jose";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+import { JWT_SECRET } from "@/lib/auth/server";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

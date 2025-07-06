@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { signUp } from "@/lib/auth-client";
+import { signUp } from "@/lib/auth/client";
 import { toast } from "sonner";
 
 export default function SignUpPage() {
