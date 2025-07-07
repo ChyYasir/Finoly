@@ -1,7 +1,7 @@
 // lib/business/utils.ts
 import { db } from "@/db";
 import { business, team, teamMember } from "@/db/schema";
-import { eq, count } from "drizzle-orm";
+import { eq, count, countDistinct } from "drizzle-orm";
 
 export interface BusinessStats {
   teamsCount: number;
@@ -23,9 +23,9 @@ export async function updateBusinessStats(
       .from(team)
       .where(eq(team.businessId, businessId));
 
-    // Get user count (distinct users across all teams)
+    // Get user count (distinct users across all teams in the business)
     const userCount = await db
-      .select({ count: count() })
+      .select({ count: countDistinct(teamMember.userId) })
       .from(teamMember)
       .innerJoin(team, eq(teamMember.teamId, team.id))
       .where(eq(team.businessId, businessId));
@@ -240,7 +240,7 @@ export async function getBusinessReportData(businessId: string) {
 
     // Get user count
     const userCount = await db
-      .select({ count: count() })
+      .select({ count: countDistinct(teamMember.userId) })
       .from(teamMember)
       .innerJoin(team, eq(teamMember.teamId, team.id))
       .where(eq(team.businessId, businessId));

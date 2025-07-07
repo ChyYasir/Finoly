@@ -18,6 +18,7 @@ import {
   ChevronRight,
   X,
   Building2,
+  Users,
 } from "lucide-react";
 
 interface NavigationItem {
@@ -87,6 +88,13 @@ const navigationItems: NavigationItem[] = [
     href: "/dashboard/alerts",
     icon: AlertTriangle,
     requiredPermissions: ["read_alert"],
+  },
+  {
+    name: "Users",
+    href: "/dashboard/users",
+    icon: Users,
+    requiredPermissions: [],
+    businessOwnerOnly: true,
   },
   {
     name: "Business Settings",
