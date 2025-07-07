@@ -19,6 +19,7 @@ import {
   X,
   Building2,
   Users,
+  UserCheck,
 } from "lucide-react";
 
 interface NavigationItem {
@@ -90,9 +91,16 @@ const navigationItems: NavigationItem[] = [
     requiredPermissions: ["read_alert"],
   },
   {
+    name: "Teams",
+    href: "/dashboard/teams",
+    icon: Users,
+    requiredPermissions: [],
+    businessOnly: true,
+  },
+  {
     name: "Users",
     href: "/dashboard/users",
-    icon: Users,
+    icon: UserCheck,
     requiredPermissions: [],
     businessOwnerOnly: true,
   },

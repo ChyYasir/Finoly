@@ -63,6 +63,10 @@ export const team = pgTable("team", {
   description: text("description"),
   businessId: text("business_id").notNull(), // References business.id
   adminUserId: text("admin_user_id").notNull(), // References user.id
+  memberCount: integer("member_count").default(0),
+  budgetCount: integer("budget_count").default(0),
+  totalExpenses: integer("total_expenses").default(0),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),
@@ -80,6 +84,9 @@ export const teamMember = pgTable("team_member", {
   joinedAt: timestamp("joined_at")
     .$defaultFn(() => new Date())
     .notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
 });
 
 // Roles table (team-scoped custom roles)
@@ -89,6 +96,8 @@ export const role = pgTable("role", {
   description: text("description"),
   teamId: text("team_id").notNull(), // References team.id
   permissions: text("permissions").notNull(), // JSON array of permission strings
+  userCount: integer("user_count").default(0),
+  isDefault: boolean("is_default").default(false),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),
@@ -134,6 +143,23 @@ export type InsertTeam = typeof team.$inferInsert;
 export type InsertTeamMember = typeof teamMember.$inferInsert;
 export type InsertRole = typeof role.$inferInsert;
 export type InsertSession = typeof session.$inferInsert;
+
+// Extended types for API responses
+export type TeamWithMembers = Team & {
+  members: (TeamMember & {
+    user: Pick<User, "id" | "name" | "email">;
+    role: Pick<Role, "id" | "name" | "permissions"> | null;
+  })[];
+  admin: Pick<User, "id" | "name" | "email">;
+  roles: Role[];
+};
+
+export type TeamSummary = Team & {
+  admin: Pick<User, "id" | "name" | "email">;
+  memberCount: number;
+  budgetCount: number;
+  totalExpenses: number;
+};
 
 // Business settings type
 export interface BusinessSettings {
@@ -201,15 +227,52 @@ export const PERMISSIONS = {
   READ_ROLE: "read_role",
   UPDATE_ROLE: "update_role",
   DELETE_ROLE: "delete_role",
+
+  // Receipt permissions
+  CREATE_RECEIPT: "create_receipt",
+  READ_RECEIPT: "read_receipt",
+  UPDATE_RECEIPT: "update_receipt",
+  DELETE_RECEIPT: "delete_receipt",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 // Helper function to get default permissions for role types
 export function getDefaultPermissions(roleType: string): Permission[] {
-  switch (roleType) {
+  switch (roleType.toLowerCase()) {
     case "admin":
-      return Object.values(PERMISSIONS);
+    case "team_admin":
+      return [
+        PERMISSIONS.CREATE_EXPENSE,
+        PERMISSIONS.READ_EXPENSE,
+        PERMISSIONS.UPDATE_EXPENSE,
+        PERMISSIONS.DELETE_EXPENSE,
+        PERMISSIONS.CREATE_BUDGET,
+        PERMISSIONS.READ_BUDGET,
+        PERMISSIONS.UPDATE_BUDGET,
+        PERMISSIONS.DELETE_BUDGET,
+        PERMISSIONS.CREATE_REPORT,
+        PERMISSIONS.READ_REPORT,
+        PERMISSIONS.UPDATE_REPORT,
+        PERMISSIONS.DELETE_REPORT,
+        PERMISSIONS.CREATE_FORECAST,
+        PERMISSIONS.READ_FORECAST,
+        PERMISSIONS.UPDATE_FORECAST,
+        PERMISSIONS.DELETE_FORECAST,
+        PERMISSIONS.CREATE_ALERT,
+        PERMISSIONS.READ_ALERT,
+        PERMISSIONS.UPDATE_ALERT,
+        PERMISSIONS.DELETE_ALERT,
+        PERMISSIONS.CREATE_USER,
+        PERMISSIONS.READ_USER,
+        PERMISSIONS.UPDATE_USER,
+        PERMISSIONS.DELETE_USER,
+        PERMISSIONS.CREATE_ROLE,
+        PERMISSIONS.READ_ROLE,
+        PERMISSIONS.UPDATE_ROLE,
+        PERMISSIONS.DELETE_ROLE,
+        PERMISSIONS.UPDATE_TEAM,
+      ];
     case "manager":
       return [
         PERMISSIONS.CREATE_EXPENSE,
@@ -225,8 +288,22 @@ export function getDefaultPermissions(roleType: string): Permission[] {
         PERMISSIONS.CREATE_ALERT,
         PERMISSIONS.READ_ALERT,
         PERMISSIONS.UPDATE_ALERT,
+        PERMISSIONS.READ_USER,
       ];
+    case "member":
     case "viewer":
+      return [
+        PERMISSIONS.CREATE_EXPENSE,
+        PERMISSIONS.READ_EXPENSE,
+        PERMISSIONS.UPDATE_EXPENSE,
+        PERMISSIONS.READ_BUDGET,
+        PERMISSIONS.READ_REPORT,
+        PERMISSIONS.READ_FORECAST,
+        PERMISSIONS.READ_ALERT,
+        PERMISSIONS.CREATE_RECEIPT,
+        PERMISSIONS.READ_RECEIPT,
+      ];
+    default:
       return [
         PERMISSIONS.READ_EXPENSE,
         PERMISSIONS.READ_BUDGET,
@@ -234,8 +311,6 @@ export function getDefaultPermissions(roleType: string): Permission[] {
         PERMISSIONS.READ_FORECAST,
         PERMISSIONS.READ_ALERT,
       ];
-    default:
-      return [];
   }
 }
 
