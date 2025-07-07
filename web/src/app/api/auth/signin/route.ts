@@ -1,3 +1,4 @@
+// app/api/auth/signin/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
       accountType: user.accountType,
     };
 
-    // For business users, fetch team memberships and roles
+    // For business users, add business context
     if (user.accountType === "business" && user.businessId) {
       jwtPayload.businessId = user.businessId;
 
@@ -105,8 +106,8 @@ export async function POST(req: NextRequest) {
         .where(eq(teamMemberSchema.userId, user.id));
 
       jwtPayload.teams = teamMemberships.map((tm) => ({
-        teamId: tm.teamId,
-        teamName: tm.teamName,
+        id: tm.teamId,
+        name: tm.teamName,
         roleId: tm.roleId,
         roleName: tm.roleName,
         permissions: tm.permissions ? JSON.parse(tm.permissions) : [],
@@ -119,13 +120,18 @@ export async function POST(req: NextRequest) {
     });
 
     // Set HTTP-only cookie
-    cookies().set("session_token", token, {
+    const cookieStore = await cookies();
+    cookieStore.set("session_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 30 * 60, // 30 minutes
       path: "/",
       sameSite: "lax",
     });
+
+    // Determine if user is business owner
+    const isBusinessOwner =
+      user.accountType === "business" && user.businessOwnerId === user.id;
 
     // Prepare response data
     const responseData = {
@@ -136,11 +142,9 @@ export async function POST(req: NextRequest) {
         accountType: user.accountType,
         businessId: user.businessId,
         businessName: user.businessName,
-        role:
-          user.accountType === "business" && user.businessOwnerId === user.id
-            ? "owner"
-            : "member",
+        isBusinessOwner,
         teams: user.accountType === "business" ? jwtPayload.teams : undefined,
+        createdAt: new Date().toISOString(),
       },
       token,
       expiresIn: 1800, // 30 minutes in seconds

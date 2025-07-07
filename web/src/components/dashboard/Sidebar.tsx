@@ -1,6 +1,7 @@
+// components/dashboard/Sidebar.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,17 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Building2,
 } from "lucide-react";
+
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  requiredPermissions: string[];
+  adminOnly?: boolean;
+  businessOwnerOnly?: boolean;
+}
 
 interface SidebarProps {
   user: {
@@ -26,7 +37,7 @@ interface SidebarProps {
     accountType: "individual" | "business";
     businessId?: string | null;
     businessName?: string | null;
-    role?: "owner" | "member" | null;
+    isBusinessOwner?: boolean;
     teams?: Array<{
       id: string;
       name: string;
@@ -40,7 +51,7 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const navigationItems = [
+const navigationItems: NavigationItem[] = [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -78,7 +89,14 @@ const navigationItems = [
     requiredPermissions: ["read_alert"],
   },
   {
-    name: "Settings",
+    name: "Business Settings",
+    href: "/dashboard/business",
+    icon: Building2,
+    requiredPermissions: [],
+    businessOwnerOnly: true,
+  },
+  {
+    name: "Team Settings",
     href: "/dashboard/settings",
     icon: Settings,
     requiredPermissions: ["update_team", "create_role"],
@@ -94,15 +112,37 @@ export function Sidebar({ user, activeTeam, isOpen, onClose }: SidebarProps) {
   const currentTeam = user.teams?.find((team) => team.id === activeTeam);
   const userPermissions = currentTeam?.permissions || [];
   const isTeamAdmin =
-    user.role === "owner" || userPermissions.includes("update_team");
+    user.isBusinessOwner || userPermissions.includes("update_team");
 
-  const hasPermission = (item: (typeof navigationItems)[0]) => {
+  // Debug logging
+  useEffect(() => {
+    console.log("Sidebar Debug:", {
+      accountType: user.accountType,
+      isBusinessOwner: user.isBusinessOwner,
+      businessId: user.businessId,
+      userPermissions,
+      isTeamAdmin,
+    });
+  }, [user, userPermissions, isTeamAdmin]);
+
+  const hasPermission = (item: NavigationItem) => {
     // Dashboard is always accessible
     if (item.name === "Dashboard") return true;
 
-    // For individual users, show all items except Settings
+    // Check if item is for business owners only
+    if (item.businessOwnerOnly) {
+      const hasAccess = user.accountType === "business" && user.isBusinessOwner;
+      console.log(`Business owner check for ${item.name}:`, {
+        accountType: user.accountType,
+        isBusinessOwner: user.isBusinessOwner,
+        hasAccess,
+      });
+      return hasAccess;
+    }
+
+    // For individual users, show all items except Settings and Business Settings
     if (user.accountType === "individual") {
-      return item.name !== "Settings";
+      return !item.adminOnly && !item.businessOwnerOnly;
     }
 
     // For business users, check permissions

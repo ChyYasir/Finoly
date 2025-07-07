@@ -1,3 +1,4 @@
+// lib/dashboard/hooks.ts
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "@/lib/auth/client";
 
@@ -56,7 +57,7 @@ export function useTeamPermissions(activeTeam: string) {
 
   const isTeamAdmin = useMemo(() => {
     if (!session?.user) return false;
-    return session.user.role === "owner" || hasPermission("update_team");
+    return session.user.isBusinessOwner || hasPermission("update_team");
   }, [session?.user, hasPermission]);
 
   return {
@@ -74,94 +75,94 @@ export function useDashboardData(activeTeam: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Mock data - replace with actual API calls
-        const mockData = {
-          summary: {
-            totalBudget: 50000,
-            totalSpent: 32500,
-            budgetUtilization: 65,
-            monthlyAverage: 10833,
+      // Mock data - replace with actual API calls
+      const mockData = {
+        summary: {
+          totalBudget: 50000,
+          totalSpent: 32500,
+          budgetUtilization: 65,
+          monthlyAverage: 10833,
+        },
+        expenses: [
+          {
+            id: 1,
+            amount: 1200,
+            category: "Office",
+            date: "2024-01-15",
+            description: "Office supplies",
           },
-          expenses: [
-            {
-              id: 1,
-              amount: 1200,
-              category: "Office",
-              date: "2024-01-15",
-              description: "Office supplies",
-            },
-            {
-              id: 2,
-              amount: 800,
-              category: "Travel",
-              date: "2024-01-14",
-              description: "Business trip",
-            },
-            {
-              id: 3,
-              amount: 300,
-              category: "Software",
-              date: "2024-01-13",
-              description: "Monthly subscription",
-            },
-          ],
-          budgets: [
-            {
-              id: 1,
-              name: "Q1 Marketing",
-              amount: 15000,
-              spent: 8750,
-              category: "Marketing",
-            },
-            {
-              id: 2,
-              name: "Operations",
-              amount: 20000,
-              spent: 16800,
-              category: "Operations",
-            },
-            {
-              id: 3,
-              name: "Sales",
-              amount: 12000,
-              spent: 6300,
-              category: "Sales",
-            },
-          ],
-          alerts: [
-            {
-              id: 1,
-              type: "warning",
-              message: "Marketing budget at 85%",
-              timestamp: "2h ago",
-            },
-            {
-              id: 2,
-              type: "info",
-              message: "New expense added",
-              timestamp: "4h ago",
-            },
-          ],
-        };
+          {
+            id: 2,
+            amount: 800,
+            category: "Travel",
+            date: "2024-01-14",
+            description: "Business trip",
+          },
+          {
+            id: 3,
+            amount: 300,
+            category: "Software",
+            date: "2024-01-13",
+            description: "Monthly subscription",
+          },
+        ],
+        budgets: [
+          {
+            id: 1,
+            name: "Q1 Marketing",
+            amount: 15000,
+            spent: 8750,
+            category: "Marketing",
+          },
+          {
+            id: 2,
+            name: "Operations",
+            amount: 20000,
+            spent: 16800,
+            category: "Operations",
+          },
+          {
+            id: 3,
+            name: "Sales",
+            amount: 12000,
+            spent: 6300,
+            category: "Sales",
+          },
+        ],
+        alerts: [
+          {
+            id: 1,
+            type: "warning",
+            message: "Marketing budget at 85%",
+            timestamp: "2h ago",
+          },
+          {
+            id: 2,
+            type: "info",
+            message: "New expense added",
+            timestamp: "4h ago",
+          },
+        ],
+      };
 
-        setData(mockData);
-      } catch (err) {
-        setError("Failed to fetch dashboard data");
-        console.error("Dashboard data fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+      setData(mockData);
+    } catch (err) {
+      setError("Failed to fetch dashboard data");
+      console.error("Dashboard data fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (activeTeam) {
       fetchData();
     }

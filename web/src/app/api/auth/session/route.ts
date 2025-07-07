@@ -1,3 +1,4 @@
+// app/api/auth/session/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import * as jose from "jose";
 import { db } from "@/db";
@@ -35,7 +36,6 @@ export async function GET(request: NextRequest) {
 
     const userId = payload.id as string;
     const accountType = payload.accountType as string;
-    const businessId = payload.businessId as string | undefined;
 
     // Fetch fresh user data from database
     const userData = await db
@@ -72,14 +72,14 @@ export async function GET(request: NextRequest) {
       name: user.name,
       email: user.email,
       accountType: user.accountType,
-      createdAt: user.createdAt,
+      createdAt: user.createdAt.toISOString(),
     };
 
     // Add business context for business users
     if (user.accountType === "business" && user.businessId) {
       responseData.businessId = user.businessId;
       responseData.businessName = user.businessName;
-      responseData.role = user.businessOwnerId === user.id ? "owner" : "member";
+      responseData.isBusinessOwner = user.businessOwnerId === user.id;
 
       // Fetch current team memberships with roles
       const teamMemberships = await db

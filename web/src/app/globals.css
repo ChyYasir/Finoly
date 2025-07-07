@@ -120,3 +120,56 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom sidebar styles for better behavior */
+@layer components {
+  .dashboard-container {
+    display: flex;
+    min-height: calc(100vh - 4rem); /* Account for topbar */
+    transition: margin-left 0.3s ease-in-out;
+  }
+
+  .sidebar-container {
+    flex-shrink: 0;
+    background: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+    transition: width 0.3s ease-in-out;
+  }
+
+  .main-content {
+    flex: 1;
+    min-width: 0; /* Allow content to shrink */
+    transition: margin-left 0.3s ease-in-out;
+  }
+
+  @media (max-width: 1023px) {
+    .sidebar-container {
+      position: fixed;
+      top: 4rem;
+      left: 0;
+      height: calc(100vh - 4rem);
+      z-index: 40;
+      transform: translateX(-100%);
+      width: 16rem; /* Always 16rem on mobile */
+    }
+
+    .sidebar-visible {
+      transform: translateX(0);
+    }
+
+    .sidebar-hidden {
+      transform: translateX(-100%);
+    }
+
+    .dashboard-container {
+      margin-left: 0 !important; /* Override any desktop margin */
+    }
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 30;
+  }
+}

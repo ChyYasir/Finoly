@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
+  loading?: boolean;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {

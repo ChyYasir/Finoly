@@ -1,3 +1,4 @@
+// components/dashboard/Topbar.tsx
 "use client";
 
 import { useState } from "react";
@@ -33,7 +34,7 @@ interface TopbarProps {
     accountType: "individual" | "business";
     businessId?: string | null;
     businessName?: string | null;
-    role?: "owner" | "member" | null;
+    isBusinessOwner?: boolean;
     teams?: Array<{
       id: string;
       name: string;
@@ -213,7 +214,11 @@ export function Topbar({
                 <div className="hidden sm:flex flex-col items-start">
                   <p className="text-sm font-medium">{displayName}</p>
                   <p className="text-xs text-gray-500">
-                    {currentTeam?.roleName || user.role}
+                    {user.accountType === "business"
+                      ? user.isBusinessOwner
+                        ? "Business Owner"
+                        : currentTeam?.roleName || "Member"
+                      : "Individual"}
                   </p>
                 </div>
                 <ChevronDown className="h-4 w-4 hidden sm:block" />
@@ -225,7 +230,9 @@ export function Topbar({
                   <p className="font-medium">{displayName}</p>
                   <p className="text-xs text-gray-500">{user.email}</p>
                   <Badge variant="outline" className="w-fit">
-                    {user.accountType}
+                    {user.accountType === "business" && user.isBusinessOwner
+                      ? "Business Owner"
+                      : user.accountType}
                   </Badge>
                 </div>
               </DropdownMenuLabel>

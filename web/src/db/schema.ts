@@ -1,4 +1,12 @@
-import { pgTable, text, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
+// src/db/schema.ts
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  pgEnum,
+  integer,
+} from "drizzle-orm/pg-core";
 
 // Account type enum
 export const accountTypeEnum = pgEnum("account_type", [
@@ -18,6 +26,7 @@ export const user = pgTable("user", {
     .$defaultFn(() => false)
     .notNull(),
   image: text("image"),
+  phone: text("phone"),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),
@@ -32,6 +41,13 @@ export const business = pgTable("business", {
   name: text("name").notNull(),
   ownerId: text("owner_id").notNull(), // References user.id
   settings: text("settings"), // JSON string for business settings
+  teamsCount: integer("teams_count").default(0),
+  usersCount: integer("users_count").default(0),
+  totalExpenses: integer("total_expenses").default(0),
+  activeBudgets: integer("active_budgets").default(0),
+  subscriptionPlan: text("subscription_plan").default("free"),
+  subscriptionStatus: text("subscription_status").default("active"),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),
@@ -118,3 +134,129 @@ export type InsertTeam = typeof team.$inferInsert;
 export type InsertTeamMember = typeof teamMember.$inferInsert;
 export type InsertRole = typeof role.$inferInsert;
 export type InsertSession = typeof session.$inferInsert;
+
+// Business settings type
+export interface BusinessSettings {
+  defaultCurrency: string;
+  fiscalYearStart: string;
+  timezone: string;
+  features: {
+    whatsappIntegration: boolean;
+    aiInsights: boolean;
+    advancedReporting: boolean;
+  };
+  notifications: {
+    email: boolean;
+    whatsapp: boolean;
+    web: boolean;
+  };
+}
+
+// Permission types
+export const PERMISSIONS = {
+  // Expense permissions
+  CREATE_EXPENSE: "create_expense",
+  READ_EXPENSE: "read_expense",
+  UPDATE_EXPENSE: "update_expense",
+  DELETE_EXPENSE: "delete_expense",
+
+  // Budget permissions
+  CREATE_BUDGET: "create_budget",
+  READ_BUDGET: "read_budget",
+  UPDATE_BUDGET: "update_budget",
+  DELETE_BUDGET: "delete_budget",
+
+  // Report permissions
+  CREATE_REPORT: "create_report",
+  READ_REPORT: "read_report",
+  UPDATE_REPORT: "update_report",
+  DELETE_REPORT: "delete_report",
+
+  // Forecast permissions
+  CREATE_FORECAST: "create_forecast",
+  READ_FORECAST: "read_forecast",
+  UPDATE_FORECAST: "update_forecast",
+  DELETE_FORECAST: "delete_forecast",
+
+  // Alert permissions
+  CREATE_ALERT: "create_alert",
+  READ_ALERT: "read_alert",
+  UPDATE_ALERT: "update_alert",
+  DELETE_ALERT: "delete_alert",
+
+  // Team management permissions
+  CREATE_TEAM: "create_team",
+  READ_TEAM: "read_team",
+  UPDATE_TEAM: "update_team",
+  DELETE_TEAM: "delete_team",
+
+  // User management permissions
+  CREATE_USER: "create_user",
+  READ_USER: "read_user",
+  UPDATE_USER: "update_user",
+  DELETE_USER: "delete_user",
+
+  // Role management permissions
+  CREATE_ROLE: "create_role",
+  READ_ROLE: "read_role",
+  UPDATE_ROLE: "update_role",
+  DELETE_ROLE: "delete_role",
+} as const;
+
+export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+// Helper function to get default permissions for role types
+export function getDefaultPermissions(roleType: string): Permission[] {
+  switch (roleType) {
+    case "admin":
+      return Object.values(PERMISSIONS);
+    case "manager":
+      return [
+        PERMISSIONS.CREATE_EXPENSE,
+        PERMISSIONS.READ_EXPENSE,
+        PERMISSIONS.UPDATE_EXPENSE,
+        PERMISSIONS.CREATE_BUDGET,
+        PERMISSIONS.READ_BUDGET,
+        PERMISSIONS.UPDATE_BUDGET,
+        PERMISSIONS.CREATE_REPORT,
+        PERMISSIONS.READ_REPORT,
+        PERMISSIONS.CREATE_FORECAST,
+        PERMISSIONS.READ_FORECAST,
+        PERMISSIONS.CREATE_ALERT,
+        PERMISSIONS.READ_ALERT,
+        PERMISSIONS.UPDATE_ALERT,
+      ];
+    case "viewer":
+      return [
+        PERMISSIONS.READ_EXPENSE,
+        PERMISSIONS.READ_BUDGET,
+        PERMISSIONS.READ_REPORT,
+        PERMISSIONS.READ_FORECAST,
+        PERMISSIONS.READ_ALERT,
+      ];
+    default:
+      return [];
+  }
+}
+
+// Helper function to generate IDs
+export function generateId(prefix: string): string {
+  return `${prefix}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Default business settings
+export const DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
+  defaultCurrency: "USD",
+  fiscalYearStart: "2024-01-01",
+  timezone: "UTC",
+  features: {
+    whatsappIntegration: true,
+    aiInsights: true,
+    advancedReporting: true,
+  },
+  notifications: {
+    email: true,
+    whatsapp: true,
+    web: true,
+  },
+};
