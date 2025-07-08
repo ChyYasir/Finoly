@@ -274,26 +274,85 @@ Intelligently processes expense-related prompts to extract expense information o
 }
 ```
 
-### 8. View Request
+### 8. View Request - Marketing Team This Month
 
-**Prompt:** `"Show me my expenses for this month"`
+**Prompt:** `"show all marketing team cost in this month"`
 
 **Response (200 OK):**
 ```json
 {
     "status": "success",
     "prompt_type": "view",
-    "original_prompt": "Show me my expenses for this month",
+    "original_prompt": "show all marketing team cost in this month",
     "prompt_analysis": {
         "prompt_type": "view",
         "confidence": "high",
         "reasoning": "User wants to see/view expenses"
     },
-    "message": "View functionality will be implemented in future updates"
+    "query_result": {
+        "query_code": "db.select().from(expense).innerJoin(team, eq(expense.teamId, team.teamId)).where(and(eq(team.name, 'marketing'), between(expense.date, new Date('2025-01-01T00:00:00.000Z'), new Date('2025-01-31T23:59:59.999Z'))));",
+        "filters": {
+            "team": "marketing",
+            "time_period": "this month",
+            "category": null,
+            "amount_range": null
+        },
+        "explanation": "Query filters expenses for marketing team within the current month"
+    }
 }
 ```
 
-### 9. Relative Date Handling
+**Note:** The system calculates actual date ranges based on the current date. For example, if today is January 15, 2025, "this month" will generate dates from 2025-01-01 to 2025-01-31.
+
+### 9. View Request - Expenses Over Amount
+
+**Prompt:** `"expenses over 100 dollars"`
+
+**Response (200 OK):**
+```json
+{
+    "status": "success",
+    "prompt_type": "view",
+    "original_prompt": "expenses over 100 dollars",
+    "prompt_analysis": {
+        "prompt_type": "view",
+        "confidence": "high",
+        "reasoning": "User wants to see/view expenses"
+    },
+    "query_result": {
+        "query_code": "db.select().from(expense).where(gt(expense.amount, 100));",
+        "filters": {
+            "team": null,
+            "time_period": null,
+            "category": null,
+            "amount_range": "over 100"
+        },
+        "explanation": "Query filters expenses with amount greater than 100"
+    }
+}
+```
+
+### 10. View Request - Insufficient Information
+
+**Prompt:** `"show expenses"`
+
+**Response (400 Bad Request):**
+```json
+{
+    "error": "Insufficient information",
+    "message": "Could not generate a meaningful query. Please provide more specific criteria.",
+    "missing_fields": ["team", "time_period", "category", "amount_range"],
+    "example_queries": [
+        "show all marketing team cost in this month",
+        "expenses over 100 dollars",
+        "ads expenses this year",
+        "all expenses"
+    ],
+    "original_prompt": "show expenses"
+}
+```
+
+### 11. Relative Date Handling
 
 **Prompt:** `"I spent 50 on food today"`
 
@@ -321,7 +380,7 @@ Intelligently processes expense-related prompts to extract expense information o
 
 **Note:** The LLM returns `null` for relative dates like "today", "yesterday", "tomorrow", and the code converts them to actual dates.
 
-### 10. Unclear or Invalid Prompt
+### 12. Unclear or Invalid Prompt
 
 **Prompt:** `"Hello, how are you?"`
 
@@ -350,6 +409,16 @@ Intelligently processes expense-related prompts to extract expense information o
 - Validates required fields (amount and category)
 - Returns structured expense data
 
+### View Operations with Drizzle ORM
+- **Team-based filtering**: Filter expenses by team name (e.g., "marketing", "sales")
+- **Time period filtering**: Filter by "this month", "last week", "this year", etc.
+- **Category filtering**: Filter by expense category (e.g., "ads", "food", "transport")
+- **Amount range filtering**: Filter by amount ranges (e.g., "over 100", "under 50")
+- **Combined filters**: Multiple filters can be applied simultaneously
+- **Drizzle ORM queries**: Generates proper Drizzle ORM query code for database operations
+- **Calculated values**: Automatically calculates actual date ranges and values instead of using placeholders
+- **Error handling**: Returns 400 for insufficient information with helpful examples
+
 ### Date and Time Handling
 - **Relative Dates**: "today", "yesterday", "tomorrow" → converted to actual dates
 - **Null Dates**: Automatically uses current date
@@ -358,6 +427,7 @@ Intelligently processes expense-related prompts to extract expense information o
 
 ### Error Handling
 - **400 Bad Request**: For missing amount or category information
+- **400 Bad Request**: For insufficient information in view requests
 - Clear error messages with specific missing fields
 - Helpful example prompts for guidance
 - Graceful handling of unclear prompts
@@ -369,6 +439,16 @@ Run the example usage script:
 python example_usage.py
 ```
 
+Run the view operations test script:
+```bash
+python test_view_operations.py
+```
+
+Run the calculated values demonstration:
+```bash
+python demo_calculated_values.py
+```
+
 ## Project Structure
 
 ```
@@ -378,6 +458,8 @@ backend/
 ├── requirements.txt          # Python dependencies
 ├── env.example              # Environment variables template
 ├── example_usage.py         # Example usage script
+├── test_view_operations.py  # View operations test script
+├── demo_calculated_values.py # Demonstration of calculated values
 ├── README.md                # This file
 └── venv/                    # Virtual environment
 ```

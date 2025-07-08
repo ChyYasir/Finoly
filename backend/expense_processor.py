@@ -52,6 +52,91 @@ class ExpenseProcessor:
             else:
                 return {"prompt_type": "view", "confidence": "medium", "reasoning": "fallback classification"}
     
+    def generate_view_query(self, prompt):
+        """Generate Drizzle ORM query for viewing expenses based on user prompt"""
+        # First, extract filtering criteria using AI
+        extraction_prompt = f"""
+        Extract filtering criteria from the user's request for viewing expenses.
+        
+        User Request: {prompt}
+        
+        Rules:
+        1. Extract the following criteria:
+           - Team name (e.g., "marketing", "sales", "engineering")
+           - Time period (e.g., "this month", "last week", "2024", "today", "yesterday")
+           - Category (e.g., "ads", "food", "transport")
+           - Amount range (e.g., "over 100", "less than 50", "between 50 and 100")
+        
+        2. Return JSON response with this structure:
+        {{
+            "team": "team name if specified, null otherwise",
+            "time_period": "time period if specified, null otherwise",
+            "category": "category if specified, null otherwise",
+            "amount_range": {{
+                "operator": "gt/lt/gte/lte/between",
+                "value": "numeric value or array for between",
+                "text": "original text like 'over 100'"
+            }} if specified, null otherwise
+        }}
+        
+        Examples:
+        - "show all marketing team cost in this month" → {{"team": "marketing", "time_period": "this month", "category": null, "amount_range": null}}
+        - "expenses over 100 dollars" → {{"team": null, "time_period": null, "category": null, "amount_range": {{"operator": "gt", "value": 100, "text": "over 100"}}}}
+        - "ads expenses this year" → {{"team": null, "time_period": "this year", "category": "ads", "amount_range": null}}
+        
+        Return only the JSON response, no additional text.
+        """
+        
+        messages = [HumanMessage(content=extraction_prompt)]
+        response = self.groq_client.invoke(messages)
+        
+        try:
+            content = self._clean_response(response.content)
+            filters = json.loads(content)
+            
+            # Check if we have any meaningful filters
+            has_filters = any([
+                filters.get("team"),
+                filters.get("time_period"),
+                filters.get("category"),
+                filters.get("amount_range")
+            ])
+            
+            if not has_filters:
+                return {
+                    "insufficient_info": True,
+                    "missing_fields": ["team", "time_period", "category", "amount_range"],
+                    "message": "Could not extract meaningful filtering criteria from the request",
+                    "example_queries": [
+                        "show all marketing team cost in this month",
+                        "expenses over 100 dollars",
+                        "ads expenses this year",
+                        "all expenses"
+                    ]
+                }
+            
+            # Now generate the query with calculated values
+            query_code = self._build_drizzle_query(filters)
+            
+            return {
+                "query_code": query_code,
+                "filters": filters,
+                "explanation": self._generate_explanation(filters)
+            }
+            
+        except json.JSONDecodeError as e:
+            return {
+                "insufficient_info": True,
+                "missing_fields": ["valid_response"],
+                "message": "Could not parse the filter extraction response",
+                "example_queries": [
+                    "show all marketing team cost in this month",
+                    "expenses over 100 dollars",
+                    "ads expenses this year",
+                    "all expenses"
+                ]
+            }
+    
     def extract_expenses(self, prompt):
         """Extract expense information from the prompt"""
         extraction_prompt = f"""
@@ -255,4 +340,158 @@ class ExpenseProcessor:
                         continue
             raise json.JSONDecodeError("No valid content found", "", 0)
         
-        return content 
+        return content
+    
+    def _build_drizzle_query(self, filters):
+        """Build Drizzle ORM query with calculated values"""
+        from datetime import datetime, timedelta
+        import calendar
+        
+        # Start with base query
+        query_parts = ["db.select().from(expense)"]
+        
+        # Add JOIN if team filter is specified
+        if filters.get("team"):
+            query_parts.append(".innerJoin(team, eq(expense.teamId, team.teamId))")
+        
+        # Build WHERE conditions
+        where_conditions = []
+        
+        # Team filter
+        if filters.get("team"):
+            team_name = filters["team"]
+            where_conditions.append(f"eq(team.name, '{team_name}')")
+        
+        # Category filter
+        if filters.get("category"):
+            category = filters["category"]
+            where_conditions.append(f"eq(expense.category, '{category}')")
+        
+        # Amount range filter
+        if filters.get("amount_range"):
+            amount_range = filters["amount_range"]
+            operator = amount_range.get("operator")
+            value = amount_range.get("value")
+            
+            if operator == "gt":
+                where_conditions.append(f"gt(expense.amount, {value})")
+            elif operator == "lt":
+                where_conditions.append(f"lt(expense.amount, {value})")
+            elif operator == "gte":
+                where_conditions.append(f"gte(expense.amount, {value})")
+            elif operator == "lte":
+                where_conditions.append(f"lte(expense.amount, {value})")
+            elif operator == "between" and isinstance(value, list) and len(value) == 2:
+                where_conditions.append(f"between(expense.amount, {value[0]}, {value[1]})")
+        
+        # Time period filter
+        if filters.get("time_period"):
+            time_period = filters["time_period"]
+            start_date, end_date = self._calculate_date_range(time_period)
+            
+            if start_date and end_date:
+                where_conditions.append(f"between(expense.date, new Date('{start_date}'), new Date('{end_date}'))")
+        
+        # Add WHERE clause if we have conditions
+        if where_conditions:
+            if len(where_conditions) == 1:
+                query_parts.append(f".where({where_conditions[0]})")
+            else:
+                conditions_str = ", ".join(where_conditions)
+                query_parts.append(f".where(and({conditions_str}))")
+        
+        # Add semicolon
+        query_parts.append(";")
+        
+        return "".join(query_parts)
+    
+    def _calculate_date_range(self, time_period):
+        """Calculate actual date range based on time period"""
+        from datetime import datetime, timedelta
+        import calendar
+        
+        now = datetime.now()
+        
+        if time_period == "today":
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        elif time_period == "yesterday":
+            yesterday = now - timedelta(days=1)
+            start_date = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        elif time_period == "this week":
+            # Start of week (Monday)
+            days_since_monday = now.weekday()
+            start_date = now - timedelta(days=days_since_monday)
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59, microseconds=999999)
+        
+        elif time_period == "last week":
+            # Previous week
+            days_since_monday = now.weekday()
+            start_of_this_week = now - timedelta(days=days_since_monday)
+            start_date = start_of_this_week - timedelta(days=7)
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59, microseconds=999999)
+        
+        elif time_period == "this month":
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            last_day = calendar.monthrange(now.year, now.month)[1]
+            end_date = now.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
+        
+        elif time_period == "last month":
+            if now.month == 1:
+                last_month = now.replace(year=now.year-1, month=12, day=1)
+            else:
+                last_month = now.replace(month=now.month-1, day=1)
+            
+            start_date = last_month.replace(hour=0, minute=0, second=0, microsecond=0)
+            last_day = calendar.monthrange(last_month.year, last_month.month)[1]
+            end_date = last_month.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
+        
+        elif time_period == "this year":
+            start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now.replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=999999)
+        
+        elif time_period == "last year":
+            start_date = now.replace(year=now.year-1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now.replace(year=now.year-1, month=12, day=31, hour=23, minute=59, second=59, microsecond=999999)
+        
+        else:
+            # Try to parse as a specific year
+            try:
+                year = int(time_period)
+                start_date = datetime(year, 1, 1, 0, 0, 0, 0)
+                end_date = datetime(year, 12, 31, 23, 59, 59, 999999)
+            except ValueError:
+                return None, None
+        
+        # Format dates for JavaScript Date constructor
+        start_str = start_date.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        end_str = end_date.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        
+        return start_str, end_str
+    
+    def _generate_explanation(self, filters):
+        """Generate explanation of what the query does"""
+        explanations = []
+        
+        if filters.get("team"):
+            explanations.append(f"filters by team '{filters['team']}'")
+        
+        if filters.get("time_period"):
+            explanations.append(f"filters by time period '{filters['time_period']}'")
+        
+        if filters.get("category"):
+            explanations.append(f"filters by category '{filters['category']}'")
+        
+        if filters.get("amount_range"):
+            amount_range = filters["amount_range"]
+            explanations.append(f"filters by amount {amount_range.get('text', 'range')}")
+        
+        if not explanations:
+            return "Query returns all expenses"
+        
+        return f"Query {' and '.join(explanations)}" 

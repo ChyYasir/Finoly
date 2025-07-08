@@ -184,14 +184,26 @@ def expense_tracker():
                 'expenses': expenses_result
             })
         
-        # If it's a view type, return appropriate response
+        # If it's a view type, generate the query
         elif prompt_analysis.get('prompt_type') == 'view':
+            query_result = expense_processor.generate_view_query(prompt)
+            
+            # Check if there's insufficient information
+            if isinstance(query_result, dict) and query_result.get('insufficient_info'):
+                return jsonify({
+                    'error': 'Insufficient information',
+                    'message': query_result.get('message'),
+                    'missing_fields': query_result.get('missing_fields'),
+                    'example_queries': query_result.get('example_queries'),
+                    'original_prompt': prompt
+                }), 400
+            
             return jsonify({
                 'status': 'success',
                 'prompt_type': 'view',
                 'original_prompt': prompt,
                 'prompt_analysis': prompt_analysis,
-                'message': 'View functionality will be implemented in future updates'
+                'query_result': query_result
             })
         
         # If prompt type is unclear
