@@ -20,6 +20,7 @@ import {
   Building2,
   Users,
   UserCheck,
+  Shield,
 } from "lucide-react";
 
 interface NavigationItem {
@@ -95,6 +96,13 @@ const navigationItems: NavigationItem[] = [
     href: "/dashboard/teams",
     icon: Users,
     requiredPermissions: [],
+    businessOnly: true,
+  },
+  {
+    name: "Roles",
+    href: "/dashboard/roles",
+    icon: Shield,
+    requiredPermissions: ["read_role", "create_role", "update_role"],
     businessOnly: true,
   },
   {

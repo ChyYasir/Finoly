@@ -113,6 +113,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await request.text();
     const userContext = await verifyAuth(request);
 
     if (!userContext) {
@@ -262,6 +263,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const body = await request.json();
     const userContext = await verifyAuth(request);
 
     if (!userContext) {
@@ -294,7 +296,6 @@ export async function PUT(
       );
     }
 
-    const body = await request.json();
     const validatedData = updateTeamSchema.parse(body);
 
     // Check if new team name already exists (if name is being updated)
@@ -443,6 +444,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    await request.text();
     const userContext = await verifyAuth(request);
 
     if (!userContext) {
