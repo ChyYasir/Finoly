@@ -1,4 +1,4 @@
-// app/api/teams/[id]/route.ts
+// app/api/teams/[teamId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import * as jose from "jose";
@@ -108,10 +108,10 @@ async function checkTeamAccess(
   return { hasAccess, isAdmin, team: team[0] };
 }
 
-// GET /api/teams/[id] - Get team details
+// GET /api/teams/[teamId] - Get team details
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const userContext = await verifyAuth(request);
@@ -127,7 +127,7 @@ export async function GET(
       );
     }
 
-    const { id: teamId } = await params;
+    const teamId = (await params).teamId;
     const { hasAccess, isAdmin, team } = await checkTeamAccess(
       teamId,
       userContext.userId,
@@ -258,10 +258,10 @@ export async function GET(
   }
 }
 
-// PUT /api/teams/[id] - Update team
+// PUT /api/teams/[teamId] - Update team
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const userContext = await verifyAuth(request);
@@ -277,7 +277,7 @@ export async function PUT(
       );
     }
 
-    const { id: teamId } = await params;
+    const teamId = (await params).teamId;
     const { hasAccess, isAdmin, team } = await checkTeamAccess(
       teamId,
       userContext.userId,
@@ -439,10 +439,10 @@ export async function PUT(
   }
 }
 
-// DELETE /api/teams/[id] - Delete team (soft delete)
+// DELETE /api/teams/[teamId] - Delete team (soft delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const userContext = await verifyAuth(request);
@@ -458,7 +458,7 @@ export async function DELETE(
       );
     }
 
-    const { id: teamId } = await params;
+    const teamId = (await params).teamId;
     const { hasAccess, isAdmin, team } = await checkTeamAccess(
       teamId,
       userContext.userId,
