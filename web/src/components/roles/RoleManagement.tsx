@@ -24,6 +24,14 @@ import { RoleCard } from "./RoleCard";
 import { EditRoleModal } from "./EditRoleModal";
 import { DeleteRoleModal } from "./DeleteRoleModal";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface RoleManagementProps {
   teamId: string;
@@ -62,43 +70,41 @@ export function RoleManagement({
   const [editingRole, setEditingRole] = useState<any>(null);
   const [deletingRole, setDeletingRole] = useState<any>(null);
 
-  if (!isOpen) return null;
-
   const filteredRoles = filterRoles(roles);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent
+        className="!max-w-[98vw] !w-[98vw] max-h-[95vh] overflow-y-auto p-0"
+        style={{ maxWidth: "98vw", width: "98vw" }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-blue-600" />
               Role Management - {teamName}
-            </h2>
-            <p className="text-gray-600 text-sm mt-1">
-              Create and manage custom roles with granular permissions
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {canManageRoles && (
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Create Role
-              </Button>
-            )}
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-          </div>
-        </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {canManageRoles && (
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Role
+                </Button>
+              )}
+            </div>
+          </DialogTitle>
+          <DialogDescription>
+            Create and manage custom roles with granular permissions
+          </DialogDescription>
+        </DialogHeader>
 
         {/* Stats Cards */}
         {summary && (
-          <div className="grid grid-cols-3 gap-4 p-6 border-b bg-gray-50">
+          <div className="grid grid-cols-3 gap-4 py-6 border-t border-b bg-gray-50 mx-6">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -147,7 +153,7 @@ export function RoleManagement({
         )}
 
         {/* Search and Filters */}
-        <div className="p-6 border-b">
+        <div className="py-6 border-b px-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -225,10 +231,10 @@ export function RoleManagement({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto py-6 px-6">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+              {[1, 2, 3, 4, 5].map((i) => (
                 <Card key={i} className="animate-pulse">
                   <CardContent className="p-6">
                     <div className="space-y-3">
@@ -278,7 +284,7 @@ export function RoleManagement({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
               {filteredRoles.map((role) => (
                 <RoleCard
                   key={role.id}
@@ -346,7 +352,7 @@ export function RoleManagement({
             }
           }}
         />
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
