@@ -271,7 +271,7 @@ export function CreateRoleModal({
                     <SelectValue placeholder="Select a role template..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Custom Role (No Template)</SelectItem>
+                    <SelectItem value="custom">Custom Role (No Template)</SelectItem>
                     {Object.entries(ROLE_TEMPLATES).map(([key, template]) => (
                       <SelectItem key={key} value={key}>
                         {template.name}
