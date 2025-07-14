@@ -82,10 +82,10 @@ async function checkTeamManageAccess(
   return { hasAccess, team: team[0] };
 }
 
-// DELETE /api/teams/[id]/members/[userId] - Remove member from team
+// DELETE /api/teams/[teamId]/members/[userId] - Remove member from team
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; userId: string } }
+  { params }: { params: { teamId: string; userId: string } }
 ) {
   try {
     const userContext = await verifyAuth(request);
@@ -101,7 +101,7 @@ export async function DELETE(
       );
     }
 
-    const teamId = params.id;
+    const teamId = params.teamId;
     const targetUserId = params.userId;
 
     const { hasAccess, team } = await checkTeamManageAccess(

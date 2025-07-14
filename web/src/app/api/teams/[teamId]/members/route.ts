@@ -90,10 +90,10 @@ async function checkTeamManageAccess(
   return { hasAccess, team: team[0] };
 }
 
-// POST /api/teams/[id]/members - Add member to team
+// POST /api/teams/[teamId]/members - Add member to team
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { teamId: string } }
 ) {
   try {
     const userContext = await verifyAuth(request);
@@ -109,7 +109,7 @@ export async function POST(
       );
     }
 
-    const teamId = params.id;
+    const teamId = params.teamId;
     const { hasAccess, team } = await checkTeamManageAccess(
       teamId,
       userContext.userId,

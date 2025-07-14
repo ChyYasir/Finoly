@@ -161,14 +161,16 @@ export function RoleManagement({
 
             <div className="flex gap-2">
               <Select
-                value={filters.permissionType}
-                onValueChange={(value) => updateFilter("permissionType", value)}
+                value={filters.permissionType || "all"}
+                onValueChange={(value) =>
+                  updateFilter("permissionType", value === "all" ? "" : value)
+                }
               >
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Permission Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   {Object.entries(PERMISSION_GROUPS).map(([key, group]) => (
                     <SelectItem key={key} value={key}>
                       {group.label}
@@ -178,28 +180,32 @@ export function RoleManagement({
               </Select>
 
               <Select
-                value={filters.isDefault}
-                onValueChange={(value) => updateFilter("isDefault", value)}
+                value={filters.isDefault || "all"}
+                onValueChange={(value) =>
+                  updateFilter("isDefault", value === "all" ? "" : value)
+                }
               >
                 <SelectTrigger className="w-32">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="true">Default</SelectItem>
                   <SelectItem value="false">Custom</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select
-                value={filters.hasUsers}
-                onValueChange={(value) => updateFilter("hasUsers", value)}
+                value={filters.hasUsers || "all"}
+                onValueChange={(value) =>
+                  updateFilter("hasUsers", value === "all" ? "" : value)
+                }
               >
                 <SelectTrigger className="w-32">
                   <SelectValue placeholder="Usage" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="true">With Users</SelectItem>
                   <SelectItem value="false">Unused</SelectItem>
                 </SelectContent>

@@ -79,6 +79,7 @@ async function checkTeamAccess(
     )
     .limit(1);
 
+  console.log({ team });
   if (team.length === 0) {
     return { hasAccess: false, isAdmin: false, team: null };
   }
@@ -110,10 +111,9 @@ async function checkTeamAccess(
 // GET /api/teams/[id] - Get team details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await request.text();
     const userContext = await verifyAuth(request);
 
     if (!userContext) {
@@ -127,7 +127,7 @@ export async function GET(
       );
     }
 
-    const teamId = params.id;
+    const { id: teamId } = await params;
     const { hasAccess, isAdmin, team } = await checkTeamAccess(
       teamId,
       userContext.userId,
@@ -236,6 +236,7 @@ export async function GET(
         totalExpenses: teamData[0].totalExpenses,
       },
       userRole: isAdmin ? "admin" : "member",
+      isActive: teamData[0].isActive,
       createdAt: teamData[0].createdAt.toISOString(),
       updatedAt: teamData[0].updatedAt.toISOString(),
     };
@@ -260,10 +261,9 @@ export async function GET(
 // PUT /api/teams/[id] - Update team
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const body = await request.json();
     const userContext = await verifyAuth(request);
 
     if (!userContext) {
@@ -277,7 +277,7 @@ export async function PUT(
       );
     }
 
-    const teamId = params.id;
+    const { id: teamId } = await params;
     const { hasAccess, isAdmin, team } = await checkTeamAccess(
       teamId,
       userContext.userId,
@@ -296,6 +296,7 @@ export async function PUT(
       );
     }
 
+    const body = await request.json();
     const validatedData = updateTeamSchema.parse(body);
 
     // Check if new team name already exists (if name is being updated)
@@ -441,10 +442,9 @@ export async function PUT(
 // DELETE /api/teams/[id] - Delete team (soft delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await request.text();
     const userContext = await verifyAuth(request);
 
     if (!userContext) {
@@ -458,7 +458,7 @@ export async function DELETE(
       );
     }
 
-    const teamId = params.id;
+    const { id: teamId } = await params;
     const { hasAccess, isAdmin, team } = await checkTeamAccess(
       teamId,
       userContext.userId,

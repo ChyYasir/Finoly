@@ -112,7 +112,7 @@ async function checkRoleManageAccess(
 // GET /api/teams/[teamId]/roles - List all roles within a team
 export async function GET(
   request: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const userContext = await verifyAuth(request);
@@ -128,7 +128,7 @@ export async function GET(
       );
     }
 
-    const teamId = params.teamId;
+    const { teamId } = await params;
 
     // Check team access (any team member can view roles)
     const team = await db
@@ -149,7 +149,8 @@ export async function GET(
       )
       .limit(1);
 
-    if (team.length === 0) {
+    console.log({ teamId, businessId: userContext.businessId, isActive: true });
+    if (team?.length === 0) {
       return NextResponse.json(
         {
           error: "Not found",
@@ -171,10 +172,8 @@ export async function GET(
         isDefault: roleSchema.isDefault,
         createdAt: roleSchema.createdAt,
         updatedAt: roleSchema.updatedAt,
-        createdByName: userSchema.name,
       })
       .from(roleSchema)
-      .leftJoin(userSchema, eq(roleSchema.id, userSchema.id)) // This might need adjustment based on who created the role
       .where(eq(roleSchema.teamId, teamId))
       .orderBy(roleSchema.createdAt);
 
@@ -187,14 +186,19 @@ export async function GET(
     roles.forEach((role) => {
       const permissions = JSON.parse(role.permissions) as string[];
       permissions.forEach((permission) => {
-        const [action, resource] = permission.split("_").reverse();
-        if (!resourcePermissionDistribution[resource]) {
-          resourcePermissionDistribution[resource] = {};
+        const parts = permission.split("_");
+        if (parts.length >= 2) {
+          const action = parts[0];
+          const resource = parts.slice(1).join("_");
+
+          if (!resourcePermissionDistribution[resource]) {
+            resourcePermissionDistribution[resource] = {};
+          }
+          if (!resourcePermissionDistribution[resource][action]) {
+            resourcePermissionDistribution[resource][action] = 0;
+          }
+          resourcePermissionDistribution[resource][action]++;
         }
-        if (!resourcePermissionDistribution[resource][action]) {
-          resourcePermissionDistribution[resource][action] = 0;
-        }
-        resourcePermissionDistribution[resource][action]++;
       });
     });
 
@@ -211,11 +215,7 @@ export async function GET(
       isDefault: role.isDefault,
       createdAt: role.createdAt.toISOString(),
       updatedAt: role.updatedAt.toISOString(),
-      createdBy: role.createdByName
-        ? {
-            name: role.createdByName,
-          }
-        : null,
+      createdBy: null, // Will be populated when we have this relationship
     }));
 
     return NextResponse.json({
@@ -245,7 +245,7 @@ export async function GET(
 // POST /api/teams/[teamId]/roles - Create a new custom role
 export async function POST(
   request: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const userContext = await verifyAuth(request);
@@ -261,7 +261,7 @@ export async function POST(
       );
     }
 
-    const teamId = params.teamId;
+    const { teamId } = await params;
     const { hasAccess, team } = await checkRoleManageAccess(
       teamId,
       userContext.userId,

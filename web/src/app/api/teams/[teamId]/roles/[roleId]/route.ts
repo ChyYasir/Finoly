@@ -134,7 +134,7 @@ function groupPermissionsByResource(permissions: string[]) {
 // PUT /api/teams/[teamId]/roles/[roleId] - Update role
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { teamId: string; roleId: string } }
+  { params }: { params: Promise<{ teamId: string; roleId: string }> }
 ) {
   try {
     const userContext = await verifyAuth(request);
@@ -150,7 +150,7 @@ export async function PUT(
       );
     }
 
-    const { teamId, roleId } = params;
+    const { teamId, roleId } = await params;
     const { hasAccess, team } = await checkRoleManageAccess(
       teamId,
       userContext.userId,
@@ -289,7 +289,7 @@ export async function PUT(
 // DELETE /api/teams/[teamId]/roles/[roleId] - Delete role
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { teamId: string; roleId: string } }
+  { params }: { params: Promise<{ teamId: string; roleId: string }> }
 ) {
   try {
     const userContext = await verifyAuth(request);
@@ -305,7 +305,7 @@ export async function DELETE(
       );
     }
 
-    const { teamId, roleId } = params;
+    const { teamId, roleId } = await params;
     const { hasAccess, team } = await checkRoleManageAccess(
       teamId,
       userContext.userId,
